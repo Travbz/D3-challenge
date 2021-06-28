@@ -81,7 +81,7 @@ d3.csv("assets/cleanData/coindata.csv").then(function(coinData) {
 
     // Step 8: Create event listeners to display and hide the tooltip
     // ==============================
-    circlesGroup.on("click", function(data) {
+    circlesGroup.on("mouseover", function(data) {
       toolTip.show(data, this);
     })
       // onmouseout event
