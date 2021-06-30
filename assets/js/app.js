@@ -4,105 +4,215 @@ var svgHeight = 500;
 var margin = {
   top: 20,
   right: 40,
-  bottom: 60,
+  bottom: 80,
   left: 100
 };
 
 var width = svgWidth - margin.left - margin.right;
 var height = svgHeight - margin.top - margin.bottom;
 
-// Create an SVG wrapper, append an SVG group that will hold our chart, and shift the latter by left and top margins.
-var svg = d3.select("#scatter")
+// Create an SVG wrapper, append an SVG group that will hold our chart,
+// and shift the latter by left and top margins.
+var svg = d3
+  .select("#scatter")
   .append("svg")
   .attr("width", svgWidth)
   .attr("height", svgHeight);
 
+// Append an SVG group
 var chartGroup = svg.append("g")
   .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-// Import Data
-d3.csv("assets/cleanData/coindata.csv").then(function(coinData) {
+// Initial Params
+var chosenXAxis = "ethopen";
 
-    // Step 1: Parse Data/Cast as numbers
-    // ==============================
-    coinData.forEach(function(data) {
-      data.ethopen = +data.ethopen;
-      data.btcopen = +data.btcopen;
+// function used for updating x-scale var upon click on axis label
+function xScale(coindata, chosenXAxis) {
+  // create scales
+  var xLinearScale = d3.scaleLinear()
+    .domain([d3.min(coindata, d => d[chosenXAxis]) * 0.8,
+      d3.max(coindata, d => d[chosenXAxis]) * 1.2
+    ])
+    .range([0, width]);
+
+  return xLinearScale;
+
+}
+
+// function used for updating xAxis var upon click on axis label
+function renderAxes(newXScale, xAxis) {
+  var bottomAxis = d3.axisBottom(newXScale);
+
+  xAxis.transition()
+    .duration(1000)
+    .call(bottomAxis);
+
+  return xAxis;
+}
+
+// function used for updating circles group with a transition to
+// new circles
+function renderCircles(circlesGroup, newXScale, chosenXAxis) {
+
+  circlesGroup.transition()
+    .duration(1000)
+    .attr("fill", "purple")
+    .attr("cx", d => newXScale(d[chosenXAxis]));
+    
+
+  return circlesGroup;
+}
+
+// function used for updating circles group with new tooltip
+function updateToolTip(chosenXAxis, circlesGroup) {
+
+  var label;
+
+  if (chosenXAxis === "ethopen") {
+    label = "ETH vs BTC DAILY OPEN :";
+  }
+  else {
+    label = "LINK VS BTC DAILY OPEN";
+  }
+
+  var toolTip = d3.tip()
+    .attr("class", "tooltip")
+    .offset([80, -60])
+    .html(function(d) {
+      return (`${d.pair1}<br>${label} ${d[chosenXAxis]}`);
     });
 
-    // Step 2: Create scale functions
-    // ==============================
-    var xLinearScale = d3.scaleLinear()
-      .domain([20, d3.max(coinData, d => d.btcopen)])
-      .range([0, width]);
+  circlesGroup.call(toolTip);
 
-    var yLinearScale = d3.scaleLinear()
-      .domain([0, d3.max(coinData, d => d.ethopen)])
-      .range([height, 0]);
+  circlesGroup.on("mouseover", function(data) {
+    toolTip.show(data);
+  })
+    // onmouseout event
+    .on("mouseout", function(data, index) {
+      toolTip.hide(data);
+    });
 
-    // Step 3: Create axis functions
-    // ==============================
-    var bottomAxis = d3.axisBottom(xLinearScale);
-    var leftAxis = d3.axisLeft(yLinearScale);
+  return circlesGroup;
+}
 
-    // Step 4: Append Axes to the chart
-    // ==============================
-    chartGroup.append("g")
-      .attr("transform", `translate(0, ${height})`)
-      .call(bottomAxis);
+// Retrieve data from the CSV file and execute everything below
+d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
+  if (err) throw err;
 
-    chartGroup.append("g")
-      .call(leftAxis);
+  // parse data
+  coindata.forEach(function(data) {
+    data.ethopen = +data.ethopen;
+    data.btcopen = +data.btcopen;
+    data.linkopen = +data.linkopen;
+  });
 
-    // Step 5: Create Circles
-    // ==============================
-    var circlesGroup = chartGroup.selectAll("circle")
-    .data(coinData)
+  // xLinearScale function above csv import
+  var xLinearScale = xScale(coindata, chosenXAxis);
+
+  // Create y scale function
+  var yLinearScale = d3.scaleLinear()
+    .domain([0, d3.max(coindata, d => d.btcopen)])
+    .range([height, 0]);
+
+  // Create initial axis functions
+  var bottomAxis = d3.axisBottom(xLinearScale);
+  var leftAxis = d3.axisLeft(yLinearScale);
+
+  // append x axis
+  var xAxis = chartGroup.append("g")
+    .classed("x-axis", true)
+    .attr("transform", `translate(0, ${height})`)
+    .call(bottomAxis);
+
+  // append y axis
+  chartGroup.append("g")
+    .call(leftAxis);
+
+  // append initial circles
+  var circlesGroup = chartGroup.selectAll("circle")
+    .data(coindata)
     .enter()
     .append("circle")
-    .attr("cx", d => xLinearScale(d.btcopen))
-    .attr("cy", d => yLinearScale(d.ethopen))
-    .attr("r", "15")
+    .attr("cx", d => xLinearScale(d[chosenXAxis]))
+    .attr("cy", d => yLinearScale(d.btcopen))
+    .attr("r", 20)
     .attr("fill", "cyan")
     .attr("opacity", ".5");
 
-    // Step 6: Initialize tool tip
-    // ==============================
-    var toolTip = d3.tip()
-      .attr("class", "tooltip")
-      .offset([80, -60])
-      .html(function(d) {
-        return (`${d.pair1}<br>BTC Open: ${d.btcopen}<br>ETH Open: ${d.ethopen}`);
-      });
+  // Create group for two x-axis labels
+  var labelsGroup = chartGroup.append("g")
+    .attr("transform", `translate(${width / 2}, ${height + 20})`);
 
-    // Step 7: Create tooltip in the chart
-    // ==============================
-    chartGroup.call(toolTip);
+  var ethPriceLabel = labelsGroup.append("text")
+    .attr("x", 0)
+    .attr("y", 20)
+    .attr("value", "ethopen") // value to grab for event listener
+    .classed("active", true)
+    .text("ETH VS BTC DAILY OPEN");
 
-    // Step 8: Create event listeners to display and hide the tooltip
-    // ==============================
-    circlesGroup.on("mouseover", function(data) {
-      toolTip.show(data, this);
-    })
-      // onmouseout event
-      .on("mouseout", function(data, index) {
-        toolTip.hide(data);
-      });
+  var linkLabel = labelsGroup.append("text")
+    .attr("x", 0)
+    .attr("y", 40)
+    .attr("value", "linkopen") // value to grab for event listener
+    .classed("inactive", true)
+    .text("LINK VS BTC DAILY OPEN");
 
-    // Create axes labels
-    chartGroup.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 0 - margin.left + 40)
-      .attr("x", 0 - (height / 2))
-      .attr("dy", "1em")
-      .attr("class", "axisText")
-      .text("ETH Price");
+  // append y axis
+  chartGroup.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 0 - margin.left)
+    .attr("x", 0 - (height / 2))
+    .attr("dy", "1em")
+    .classed("axis-text", true)
+    .text("BTC PRICE");
 
-    chartGroup.append("text")
-      .attr("transform", `translate(${width / 2}, ${height + margin.top + 30})`)
-      .attr("class", "axisText")
-      .text("The King BTC Price");
-  }).catch(function(error) {
-    console.log(error);
-  });
+  // updateToolTip function above csv import
+  var circlesGroup = updateToolTip(chosenXAxis, circlesGroup);
 
+  // x axis labels event listener
+  labelsGroup.selectAll("text")
+    .on("click", function() {
+      // get value of selection
+      var value = d3.select(this).attr("value");
+      if (value !== chosenXAxis) {
+
+        // replaces chosenXAxis with value
+        chosenXAxis = value;
+
+        // console.log(chosenXAxis)
+
+        // functions here found above csv import
+        // updates x scale for new data
+        xLinearScale = xScale(coindata, chosenXAxis);
+
+        // updates x axis with transition
+        xAxis = renderAxes(xLinearScale, xAxis);
+
+        // updates circles with new x values
+        circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis);
+
+        // updates tooltips with new info
+        circlesGroup = updateToolTip(chosenXAxis, circlesGroup);
+
+        // changes classes to change bold text
+        if (chosenXAxis === "linkopen") {
+          linkLabel
+            .classed("active", true)
+            .classed("inactive", false);
+          ethPriceLabel
+            .classed("active", false)
+            .classed("inactive", true);
+        }
+        else {
+          linkLabel
+            .classed("active", false)
+            .classed("inactive", true);
+          ethPriceLabel
+            .classed("active", true)
+            .classed("inactive", false);
+        }
+      }
+    });
+}).catch(function(error) {
+  console.log(error);
+});
