@@ -1,5 +1,14 @@
-var svgWidth = 960;
-var svgHeight = 500;
+function makeResponsive() {
+
+  // if the SVG area isn't empty when the browser loads, remove it
+  // and replace it with a resized version of the chart
+  var svgArea = d3.select("body").select("svg");
+  if (!svgArea.empty()) {
+    svgArea.remove();
+  }
+
+var svgWidth = 900 || window.innerWidth;
+var svgHeight = 600 || window.innerHeight;
 
 var margin = {
   top: 20,
@@ -63,6 +72,8 @@ function renderCircles(circlesGroup, newXScale, chosenXAxis) {
   return circlesGroup;
 }
 
+
+
 // function used for updating circles group with new tooltip
 function updateToolTip(chosenXAxis, circlesGroup) {
 
@@ -71,7 +82,8 @@ function updateToolTip(chosenXAxis, circlesGroup) {
   if (chosenXAxis === "ethopen") {
     label = "ETH vs BTC DAILY OPEN :";
   }
-  else {
+  else if(chosenXAxis === "linkopen")
+  {
     label = "LINK VS BTC DAILY OPEN :";
   }
 
@@ -79,14 +91,15 @@ function updateToolTip(chosenXAxis, circlesGroup) {
     .attr("class", "tooltip")
     .offset([80, -60])
     .html(function(d) {
-      return (`${d.pair1}<br>${label} ${d[chosenXAxis]}`);
+      return (`<h3> Trading Pair: ${d.ethbtc}<h3>BTC Open($): ${d.btcopen.toFixed(2)}<h3>ETH Open($): ${d.ethopen.toFixed(2)}<h3>Date: ${d.Date}`)
     });
-
+  
   circlesGroup.call(toolTip);
 
   circlesGroup.on("mouseover", function(data) {
     toolTip.show(data);
   })
+  
     // onmouseout event
     .on("mouseout", function(data, index) {
       toolTip.hide(data);
@@ -94,6 +107,7 @@ function updateToolTip(chosenXAxis, circlesGroup) {
 
   return circlesGroup;
 }
+
 
 // Retrieve data from the CSV file and execute everything below
 d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
@@ -104,6 +118,8 @@ d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
     data.ethopen = +data.ethopen;
     data.btcopen = +data.btcopen;
     data.linkopen = +data.linkopen;
+    data.linkbtc = +data.linkbtc;
+    data.ethbtc = +data.ethbtc
   });
 
   // xLinearScale function above csv import
@@ -137,6 +153,8 @@ d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
     .attr("cy", d => yLinearScale(d.btcopen))
     .attr("r", 20)
     .attr("fill", "cyan")
+    .attr("stroke-width", "1")
+    .attr("stroke", 'black')
     .attr("opacity", ".5");
 
   // Create group for two x-axis labels
@@ -216,3 +234,9 @@ d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
 }).catch(function(error) {
   console.log(error);
 });
+}
+// When the browser loads, makeResponsive() is called.
+makeResponsive();
+
+// When the browser window is resized, responsify() is called.
+d3.select(window).on("resize", makeResponsive);
