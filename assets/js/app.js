@@ -72,7 +72,7 @@ function updateToolTip(chosenXAxis, circlesGroup) {
     label = "ETH vs BTC DAILY OPEN :";
   }
   else {
-    label = "LINK VS BTC DAILY OPEN";
+    label = "LINK VS BTC DAILY OPEN :";
   }
 
   var toolTip = d3.tip()
@@ -148,14 +148,14 @@ d3.csv("assets/cleanData/coindata.csv").then(function(coindata, err) {
     .attr("y", 20)
     .attr("value", "ethopen") // value to grab for event listener
     .classed("active", true)
-    .text("ETH VS BTC DAILY OPEN");
+    .text("ETH VS BTC DAILY OPEN, PEARSONR 0.97");
 
   var linkLabel = labelsGroup.append("text")
     .attr("x", 0)
     .attr("y", 40)
     .attr("value", "linkopen") // value to grab for event listener
     .classed("inactive", true)
-    .text("LINK VS BTC DAILY OPEN");
+    .text("LINK VS BTC DAILY OPEN, PEARSONR 0.89");
 
   // append y axis
   chartGroup.append("text")
